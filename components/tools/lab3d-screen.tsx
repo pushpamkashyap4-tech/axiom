@@ -231,7 +231,10 @@ export function Lab3DScreen() {
           </div>
 
           <div className="flex items-center justify-between gap-3 border-t border-white/[.06] px-4 py-2.5">
-            <SceneLegend type={config.type} />
+            <SceneLegend
+              type={config.type}
+              lattice={config.type === "crystal" ? config.lattice : undefined}
+            />
             <span className="hidden text-[9px] text-slate-600 sm:inline">drag · scroll · right-drag to pan</span>
           </div>
         </div>

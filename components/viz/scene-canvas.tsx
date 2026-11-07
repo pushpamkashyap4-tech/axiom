@@ -884,13 +884,23 @@ export function SceneCanvas({ config, onChange, className, compact = false }: Pr
   );
 }
 
-export function SceneLegend({ type }: { type: SceneConfig["type"] }) {
+export function SceneLegend({
+  type,
+  lattice,
+}: {
+  type: SceneConfig["type"];
+  lattice?: "fcc" | "bcc" | "sc";
+}) {
   const items =
     type === "crystal"
       ? [
           { color: ATOM_CYAN, label: "corner atoms" },
-          { color: VIOLET, label: "face-centred atoms" },
-          { color: EMERALD, label: "body-centred atom" },
+          ...(lattice === undefined || lattice === "fcc"
+            ? [{ color: VIOLET, label: "face-centred atoms" }]
+            : []),
+          ...(lattice === undefined || lattice === "bcc"
+            ? [{ color: EMERALD, label: "body-centred atom" }]
+            : []),
           { color: "#fbbf24", label: "highlight" },
         ]
       : type === "electrolytic"

@@ -224,7 +224,10 @@ export function ArtifactCard({
         {(artifact.caption || (preset && preset.exam) || artifact.type === "scene3d") && (
           <div className="flex flex-col gap-2 border-t border-white/[.06] px-3.5 py-2.5">
             {artifact.type === "scene3d" && shownConfig && (
-              <SceneLegend type={shownConfig.type} />
+              <SceneLegend
+                type={shownConfig.type}
+                lattice={shownConfig.type === "crystal" ? shownConfig.lattice : undefined}
+              />
             )}
             {artifact.caption && (
               <div className="flex items-start gap-2">

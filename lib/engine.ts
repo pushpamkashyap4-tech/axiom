@@ -272,10 +272,27 @@ function switchScene(prompt: string, context?: EngineContext): AIResponse | null
     [
       scene3d(sceneTitle(result.scene), result.scene, {
         description: "Live 3D scene — updates apply instantly",
+        caption: sceneCaption(result.scene),
       }),
     ],
     ["Change to BCC", "Highlight the body diagonal", "Show an electrolytic cell in 3D", "Stop rotating"]
   );
+}
+
+/** Caption that always matches the scene it sits under. */
+function sceneCaption(scene: SceneConfig): string | undefined {
+  if (scene.type !== "crystal") return undefined;
+  if (scene.showHighlight === false) return undefined;
+  switch (scene.highlight) {
+    case "body-diagonal":
+      return "Body diagonal = √3·a. The corner atoms touch the body-centre atom along it, giving r = √3a/4.";
+    case "edge":
+      return "Edge = 2r. Adjacent corner atoms touch along the cell edge, giving r = a/2.";
+    case "face-diagonal":
+      return "Face diagonal = √2·a. Corner and face-centre atoms touch along it, giving r = a/(2√2).";
+    default:
+      return undefined;
+  }
 }
 
 function sceneTitle(scene: SceneConfig) {

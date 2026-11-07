@@ -119,9 +119,62 @@ export const topics: Topic[] = [
       const p = prompt.toLowerCase();
       const lattice: CrystalLattice = /bcc|body.?cent/.test(p) ? "bcc" : /simple cubic|\bsc\b/.test(p) ? "sc" : "fcc";
       const highlight: CrystalHighlight = /body.?diag/.test(p) || lattice === "bcc" ? "body-diagonal" : /edge/.test(p) || lattice === "sc" ? "edge" : "face-diagonal";
+
+      const latticeInfo = {
+        fcc: {
+          title: "Face-centred cubic lattice",
+          label: "FCC",
+          atoms: "4 atoms / cell — 8 corners × ⅛ + 6 faces × ½",
+          along: "the face diagonal",
+          relation: "$4r = \\sqrt{2}\\,a \\Rightarrow r = \\dfrac{a}{2\\sqrt{2}} \\approx 0.354\\,a$",
+          packing: "74%",
+          example: "Cu, Ag, Au, Al",
+        },
+        bcc: {
+          title: "Body-centred cubic lattice",
+          label: "BCC",
+          atoms: "2 atoms / cell — 8 corners × ⅛ + 1 body centre",
+          along: "the body diagonal",
+          relation: "$4r = \\sqrt{3}\\,a \\Rightarrow r = \\dfrac{\\sqrt{3}}{4}\\,a \\approx 0.433\\,a$",
+          packing: "68%",
+          example: "Fe at room temperature, Cr, W, Na",
+        },
+        sc: {
+          title: "Simple cubic lattice",
+          label: "SC",
+          atoms: "1 atom / cell — 8 corners × ⅛",
+          along: "the cell edge",
+          relation: "$a = 2r \\Rightarrow r = \\dfrac{a}{2} = 0.5\\,a$",
+          packing: "52.4%",
+          example: "Po (the only element that adopts it)",
+        },
+      }[lattice];
+
+      const highlightInfo = {
+        "face-diagonal": {
+          caption: "Face diagonal = √2·a. Corner and face-centre atoms touch along it, giving r = a/(2√2).",
+          note: "The **face diagonal** of the cube is $d = \\sqrt{a^2+a^2} = \\sqrt{2}\\,a$.",
+        },
+        "body-diagonal": {
+          caption: "Body diagonal = √3·a. The corner atoms touch the body-centre atom along it, giving r = √3a/4.",
+          note: "The **body diagonal** of the cube is $d = \\sqrt{a^2+a^2+a^2} = \\sqrt{3}\\,a$.",
+        },
+        edge: {
+          caption: "Edge = 2r. Adjacent corner atoms touch along the cell edge, giving r = a/2.",
+          note: "Atoms touch along the **cell edge**, so $d = a$.",
+        },
+        null: { caption: "", note: "" },
+      }[highlight ?? "face-diagonal"];
+
       return {
-        content: `### FCC, BCC and simple cubic — one picture, three lattices
-A unit cell is the **smallest repeating block** of a crystal. What changes between lattices is *where the atoms sit*:
+        content: `### ${latticeInfo.label} — ${latticeInfo.title}
+A unit cell is the **smallest repeating block** of a crystal. In **${latticeInfo.label}** it contains ${latticeInfo.atoms}, and atoms touch along *${latticeInfo.along}*.
+
+${highlightInfo.note} Setting it equal to the sum of touching radii gives
+
+$$${latticeInfo.relation}$$
+
+so the packing fraction is **${latticeInfo.packing}**. Typical examples: ${latticeInfo.example}.
 
 | Lattice | Atoms / cell | Atoms touch along | Packing fraction |
 | --- | --- | --- | --- |
@@ -129,18 +182,16 @@ A unit cell is the **smallest repeating block** of a crystal. What changes betwe
 | Body-centred (BCC) | 2 | body diagonal, $\\sqrt{3}a = 4r$ | 68% |
 | Face-centred (FCC / ccp) | 4 | face diagonal, $\\sqrt{2}a = 4r$ | 74% |
 
-For FCC, the **face diagonal** is $d = \\sqrt{a^2 + a^2} = \\sqrt{2}\\,a$, and because atoms touch corner-to-face-centre along it, $4r = \\sqrt{2}a \\Rightarrow r = \\dfrac{a}{2\\sqrt{2}}$.
-
 The 3D model below is live — drag to orbit it, open the controls to switch lattice type, toggle the diagonal highlight and change the lattice parameter.
 
 ${examNote("FCC has the highest packing efficiency (74%) and is the structure of Cu, Ag, Au. BCC (68%) is Fe at room temperature; SC (52.4%) is rare and only Po adopts it.")}`,
         artifacts: [
           scene3d(
-            "Face-centred cubic lattice",
+            latticeInfo.title,
             { type: "crystal", lattice, highlight, showCell: true, showHighlight: true, atomScale: 0.52, autoRotate: true },
             {
               description: "Drag to orbit · scroll to zoom · toggle a diagonal to see how atoms touch",
-              caption: "Face diagonal = √2·a. Corner and face-centre atoms touch along it, giving r = a/(2√2).",
+              caption: highlightInfo.caption,
             }
           ),
           mermaid("Lattice classification", crystalDiagram),
