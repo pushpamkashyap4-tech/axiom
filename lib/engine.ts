@@ -580,8 +580,9 @@ export function runEngine(prompt: string, context: EngineContext = {}): AIRespon
   const matched = findTopic(raw);
   const topic = matched?.topic;
 
-  // An explicit "plot / graph / vs" request should win over a prose topic.
-  if (catalogHit && hasPlotIntent(raw) && (!topic || catalogHit.score >= 4)) {
+  // A confident catalogue hit should win over a loosely matched prose topic —
+  // word overlap alone ("probability") must not hijack an explicit plot request.
+  if (catalogHit && (hasPlotIntent(raw) || catalogHit.score >= 4.5) && (!topic || catalogHit.score >= 3.5)) {
     return catalogResponse(catalogHit.preset);
   }
 
