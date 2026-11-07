@@ -6,6 +6,8 @@ Axiom is a glassmorphic, dark-first study workspace that turns natural language 
 
 ![Stack](https://img.shields.io/badge/Next.js-15-black) ![TS](https://img.shields.io/badge/TypeScript-5-blue) ![Three](https://img.shields.io/badge/three.js-r187-purple)
 
+**Live:** https://axiom-two-inky.vercel.app  ·  **Deploys from:** this repo, branch `main` (every push to `main` ships to production automatically)
+
 ---
 
 ## ✨ What's inside
