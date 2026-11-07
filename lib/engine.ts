@@ -1,6 +1,8 @@
 import { geometry, graph, mermaid, scene3d, scientific } from "./artifacts";
 import { evaluate, parse } from "mathjs";
 import { findTopic, relatedTopics, topics, type Topic } from "./knowledge";
+import { sciPresets, type SciPreset } from "./presets";
+import { hasPlotIntent, matchCatalog } from "./catalog-match";
 import type { AIResponse, Artifact, EngineContext, PlotSeries, SceneConfig } from "./types";
 import { uid } from "./utils";
 
@@ -513,6 +515,40 @@ ${examNoteLine(`If this is from a specific chapter, ask it like "${clean} — ex
 /* Main entry                                                          */
 /* ------------------------------------------------------------------ */
 
+
+/* ------------------------------------------------------------------ */
+/* Catalogue plots                                                     */
+/* ------------------------------------------------------------------ */
+
+function catalogResponse(preset: SciPreset): AIResponse {
+  const siblings = sciPresets.filter(
+    (item) => item.chapter === preset.chapter && item.key !== preset.key
+  );
+  const markerLines = (preset.markers ?? [])
+    .slice(0, 4)
+    .map((marker: any) =>
+      `- ${marker.x !== undefined ? `x = ${Math.round(marker.x * 100) / 100}` : `y = ${marker.y}`} — ${marker.label}`
+    );
+
+  return base(
+    `### ${preset.title}
+${preset.blurb}
+
+${preset.insight}
+
+**How to read the axes**
+- Horizontal: ${preset.xLabel}
+- Vertical: ${preset.yLabel}${markerLines.length ? `
+
+**Marked on the graph**
+${markerLines.join("\n")}` : ""}
+
+> **Exam link** — ${preset.chapter} · ${preset.exam ?? "JEE / NEET / Boards"}`,
+    [scientific(preset.key, preset.insight, preset.title)],
+    siblings.slice(0, 3).map((item) => item.title)
+  );
+}
+
 export function runEngine(prompt: string, context: EngineContext = {}): AIResponse {
   const raw = prompt.trim();
   if (!raw) {
@@ -539,8 +575,15 @@ export function runEngine(prompt: string, context: EngineContext = {}): AIRespon
     if (functionResponse) return functionResponse;
   }
 
+  const catalogHit = matchCatalog(raw);
+
   const matched = findTopic(raw);
   const topic = matched?.topic;
+
+  // An explicit "plot / graph / vs" request should win over a prose topic.
+  if (catalogHit && hasPlotIntent(raw) && (!topic || catalogHit.score >= 4)) {
+    return catalogResponse(catalogHit.preset);
+  }
 
   // Scene refinement commands take priority when a 3D scene is open.
   const sceneUpdate = switchScene(raw, context);
@@ -568,6 +611,7 @@ export function runEngine(prompt: string, context: EngineContext = {}): AIRespon
       );
       if (guessed) return diagramResponse(guessed, raw);
     }
+    if (catalogHit) return catalogResponse(catalogHit.preset);
     return fallbackResponse(raw);
   }
 

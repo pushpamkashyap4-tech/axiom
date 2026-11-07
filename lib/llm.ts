@@ -15,12 +15,20 @@ const ENDPOINTS: Record<Exclude<AIConfig["provider"], "local">, string> = {
   openai: "https://api.openai.com/v1/chat/completions",
   openrouter: "https://openrouter.ai/api/v1/chat/completions",
   groq: "https://api.groq.com/openai/v1/chat/completions",
+  // Google AI Studio exposes an OpenAI-compatible surface for Gemini models.
+  gemini: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
   custom: "",
 };
 
 function resolveEngine(engine?: AIConfig): { config: AIConfig; key: string } | null {
   const envProvider = (process.env.AI_PROVIDER as AIConfig["provider"] | undefined) ?? undefined;
-  const envKey = process.env.AI_API_KEY ?? process.env.OPENAI_API_KEY ?? process.env.OPENROUTER_API_KEY;
+  const envKey =
+    process.env.AI_API_KEY ??
+    process.env.OPENAI_API_KEY ??
+    process.env.OPENROUTER_API_KEY ??
+    process.env.GROQ_API_KEY ??
+    process.env.GEMINI_API_KEY ??
+    process.env.GOOGLE_API_KEY;
   const envModel = process.env.AI_MODEL;
   const envBase = process.env.AI_BASE_URL;
 
@@ -32,7 +40,7 @@ function resolveEngine(engine?: AIConfig): { config: AIConfig; key: string } | n
       config: {
         provider: envProvider,
         apiKey: envKey,
-        model: envModel ?? "gpt-4o-mini",
+        model: envModel ?? (envProvider === "gemini" ? "gemini-3.5-flash" : "gpt-4o-mini"),
         baseUrl: envBase,
       },
       key: envKey,
@@ -113,26 +121,39 @@ export async function callLLM(request: LLMRequest): Promise<{
 
   if (!endpoint) throw new Error("Missing base URL for custom provider");
 
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${key}`,
-      ...(config.provider === "openrouter"
-        ? { "HTTP-Referer": "https://axiom.app", "X-Title": "Axiom Visual AI" }
-        : {}),
-    },
-    body: JSON.stringify({
-      model: config.model || "gpt-4o-mini",
-      temperature: 0.4,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: buildUserPrompt(request) },
-      ],
-      response_format: { type: "json_object" },
-    }),
-    signal: AbortSignal.timeout(45000),
-  });
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${key}`,
+    ...(config.provider === "openrouter"
+      ? { "HTTP-Referer": "https://axiom.app", "X-Title": "Axiom Visual AI" }
+      : {}),
+  };
+
+  const body: Record<string, unknown> = {
+    model: config.model || "gpt-4o-mini",
+    temperature: 0.4,
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: buildUserPrompt(request) },
+    ],
+    response_format: { type: "json_object" },
+  };
+
+  const send = (payload: Record<string, unknown>) =>
+    fetch(endpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(45000),
+    });
+
+  let response = await send(body);
+
+  // Some gateways reject `response_format`; retry once without it.
+  if (!response.ok && response.status === 400) {
+    const { response_format: _dropped, ...loose } = body;
+    response = await send(loose);
+  }
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");

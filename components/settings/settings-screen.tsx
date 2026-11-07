@@ -9,10 +9,13 @@ import {
   EyeOff,
   Info,
   KeyRound,
+  Monitor,
+  Moon,
   Palette,
   RotateCcw,
   Save,
   Sparkles,
+  Sun,
   Trash2,
   Zap,
 } from "lucide-react";
@@ -20,6 +23,7 @@ import { useEffect, useState } from "react";
 import { Modal } from "@/components/ui/modal";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/toast";
+import { PROVIDERS, defaultModel, providerById } from "@/lib/providers";
 import { clearSessions, loadSessions } from "@/lib/sessions";
 import {
   DEFAULT_SETTINGS,
@@ -28,6 +32,7 @@ import {
   loadSettings,
   saveSettings,
   type AccentTheme,
+  type ColorMode,
   type ExamFocus,
   type Settings,
 } from "@/lib/settings";
@@ -39,13 +44,11 @@ const ACCENTS: { id: AccentTheme; label: string; color: string }[] = [
   { id: "emerald", label: "Emerald", color: "#34d399" },
 ];
 
-const PROVIDERS = [
-  { id: "local", label: "Built-in engine", hint: "Offline · no key required" },
-  { id: "openai", label: "OpenAI", hint: "api.openai.com" },
-  { id: "openrouter", label: "OpenRouter", hint: "many models, one key" },
-  { id: "groq", label: "Groq", hint: "very fast inference" },
-  { id: "custom", label: "Custom", hint: "any OpenAI-compatible API" },
-] as const;
+const THEMES: { id: ColorMode; label: string; hint: string; icon: typeof Sun }[] = [
+  { id: "light", label: "Light", hint: "Daylight surfaces", icon: Sun },
+  { id: "dark", label: "Dark", hint: "Midnight glass", icon: Moon },
+  { id: "system", label: "System", hint: "Follows your device", icon: Monitor },
+];
 
 function Section({
   icon: Icon,
@@ -53,12 +56,14 @@ function Section({
   description,
   children,
   tone = "cyan",
+  actions,
 }: {
   icon: typeof Palette;
   title: string;
   description: string;
   children: React.ReactNode;
   tone?: "cyan" | "violet" | "emerald" | "amber";
+  actions?: React.ReactNode;
 }) {
   const tones = {
     cyan: "text-cyan-300 border-cyan-300/20 bg-cyan-400/10",
@@ -72,10 +77,11 @@ function Section({
         <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-xl border", tones[tone])}>
           <Icon size={16} />
         </span>
-        <div>
+        <div className="min-w-0 flex-1">
           <h2 className="font-display text-[14px] font-semibold text-white">{title}</h2>
           <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">{description}</p>
         </div>
+        {actions}
       </div>
       <div className="p-4 sm:p-5">{children}</div>
     </section>
@@ -86,19 +92,25 @@ export function SettingsScreen() {
   const { toast } = useToast();
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [showKey, setShowKey] = useState(false);
+  const [customModel, setCustomModel] = useState(false);
   const [testStatus, setTestStatus] = useState<"idle" | "testing" | "ok" | "fail">("idle");
+  const [testMessage, setTestMessage] = useState("");
   const [saveState, setSaveState] = useState<"idle" | "saved">("idle");
   const [confirmClear, setConfirmClear] = useState(false);
 
   useEffect(() => {
-    setSettings(loadSettings());
+    const stored = loadSettings();
+    setSettings(stored);
+    const spec = providerById[stored.engine.provider];
+    setCustomModel(Boolean(spec?.models.length) && !spec.models.some((m) => m.id === stored.engine.model));
   }, []);
 
   const update = (patch: Partial<Settings>) => {
     setSettings((prev) => {
       const next = { ...prev, ...patch };
-      if (patch.accent && patch.accent !== prev.accent) {
-        applySettings({ accent: patch.accent, reduceMotion: next.reduceMotion });
+      // Theme and accent preview instantly so the choice is visible while choosing.
+      if (patch.theme || patch.accent || patch.reduceMotion !== undefined) {
+        applySettings({ accent: next.accent, reduceMotion: next.reduceMotion, theme: next.theme });
       }
       return next;
     });
@@ -108,12 +120,12 @@ export function SettingsScreen() {
   const updateEngine = (patch: Partial<Settings["engine"]>) => {
     setSettings((prev) => ({ ...prev, engine: { ...prev.engine, ...patch } }));
     setTestStatus("idle");
+    setTestMessage("");
     setSaveState("idle");
   };
 
   const save = () => {
     saveSettings(settings);
-    applySettings({ accent: settings.accent, reduceMotion: settings.reduceMotion });
     toast("Settings saved to this device.", "success");
     setSaveState("saved");
     setTimeout(() => setSaveState("idle"), 2000);
@@ -129,6 +141,7 @@ export function SettingsScreen() {
       return;
     }
     setTestStatus("testing");
+    setTestMessage("");
     try {
       const response = await fetch("/api/ai", {
         method: "POST",
@@ -139,17 +152,20 @@ export function SettingsScreen() {
           context: { exam: settings.exam },
         }),
       });
-      const data = (await response.json()) as { meta?: { source?: string } };
+      const data = (await response.json()) as { meta?: { source?: string; model?: string } };
       if (data.meta?.source === "llm") {
         setTestStatus("ok");
-        toast("LLM connection verified.", "success");
+        setTestMessage(`Connected · ${data.meta.model ?? settings.engine.model}`);
+        toast("Model connection verified.", "success");
       } else {
         setTestStatus("fail");
-        toast("Provider unreachable — falling back to the local engine. Check key, model and CORS settings.", "error");
+        setTestMessage("Provider did not answer — running on the local engine instead.");
+        toast("Provider unreachable. Check the key and model id.", "error");
       }
     } catch {
       setTestStatus("fail");
-      toast("Test failed. Check your network and key.", "error");
+      setTestMessage("Network error while reaching the provider.");
+      toast("Test failed. Check your connection and key.", "error");
     }
   };
 
@@ -167,8 +183,11 @@ export function SettingsScreen() {
     toast(`Exported ${sessions.length} sessions.`, "success");
   };
 
+  const spec = providerById[settings.engine.provider];
+  const modelIsListed = spec.models.some((model) => model.id === settings.engine.model);
+
   return (
-    <div className="mx-auto max-w-[980px] px-4 pb-12 pt-5 sm:px-6 lg:px-9 lg:pt-8">
+    <div className="mx-auto max-w-[1020px] px-4 pb-12 pt-5 sm:px-6 lg:px-9 lg:pt-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="section-label">
@@ -178,7 +197,7 @@ export function SettingsScreen() {
             Settings
           </h1>
           <p className="mt-1 text-[12px] text-slate-500">
-            Personalise Axiom and optionally connect a language model for free-form explanations.
+            Personalise Axiom and connect a language model for free-form explanations.
           </p>
         </div>
         <button type="button" onClick={save} className="btn-primary h-9 px-4 text-[11.5px]">
@@ -228,7 +247,7 @@ export function SettingsScreen() {
                   className="field appearance-none"
                 >
                   {["2026", "2027", "2028", "2029"].map((year) => (
-                    <option key={year} value={year} className="bg-[#0b1220]">
+                    <option key={year} value={year}>
                       {year}
                     </option>
                   ))}
@@ -237,8 +256,43 @@ export function SettingsScreen() {
             </div>
           </Section>
 
-          <Section icon={Palette} title="Appearance" description="Accent, motion and contrast preferences." tone="violet">
+          <Section icon={Palette} title="Appearance" description="Theme, accent and motion preferences." tone="violet">
             <div className="flex flex-col gap-4">
+              {/* Theme — directly below the Appearance heading */}
+              <div>
+                <span className="label">Theme</span>
+                <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Colour theme">
+                  {THEMES.map((theme) => {
+                    const Icon = theme.icon;
+                    const active = settings.theme === theme.id;
+                    return (
+                      <button
+                        key={theme.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        onClick={() => update({ theme: theme.id })}
+                        className={cn(
+                          "group flex flex-col items-start gap-1.5 rounded-xl border p-2.5 text-left transition",
+                          active
+                            ? "border-[rgb(var(--accent))]/45 bg-[rgb(var(--accent))]/10"
+                            : "border-white/[.07] bg-white/[.02] hover:border-white/20"
+                        )}
+                      >
+                        <span className="flex w-full items-center justify-between">
+                          <Icon size={15} className={active ? "accent-text" : "text-slate-400"} />
+                          {active && <Check size={12} className="accent-text" />}
+                        </span>
+                        <span className={cn("text-[11.5px] font-semibold", active ? "text-white" : "text-slate-300")}>
+                          {theme.label}
+                        </span>
+                        <span className="text-[9.5px] leading-tight text-slate-500">{theme.hint}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div>
                 <span className="label">Accent colour</span>
                 <div className="grid grid-cols-3 gap-2">
@@ -264,6 +318,7 @@ export function SettingsScreen() {
                   ))}
                 </div>
               </div>
+
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[11.5px] font-medium text-slate-200">Reduce motion</p>
@@ -278,11 +333,15 @@ export function SettingsScreen() {
             <div className="flex flex-col gap-2 text-[11px] text-slate-500">
               <div className="flex items-center justify-between border-b border-white/[.05] py-1.5">
                 <span>Version</span>
-                <span className="font-mono text-slate-300">2.0.0 · Next.js 15</span>
+                <span className="font-mono text-slate-300">2.1.0 · Next.js 15</span>
               </div>
               <div className="flex items-center justify-between border-b border-white/[.05] py-1.5">
                 <span>Visual engines</span>
                 <span className="text-slate-300">Canvas 2D · WebGL · Mermaid · SVG</span>
+              </div>
+              <div className="flex items-center justify-between border-b border-white/[.05] py-1.5">
+                <span>Graph library</span>
+                <span className="text-slate-300">109 plots · 52 chapters</span>
               </div>
               <div className="flex items-center justify-between py-1.5">
                 <span>Data storage</span>
@@ -300,48 +359,89 @@ export function SettingsScreen() {
           <Section
             icon={KeyRound}
             title="AI engine"
-            description="The built-in engine renders core chapters instantly. Add an LLM key for unlimited free-form answers."
+            description="The built-in engine renders 109 exam plots instantly. Connect a model for unlimited free-form answers."
             tone="emerald"
           >
             <div className="flex flex-col gap-3.5">
               <div>
                 <span className="label">Provider</span>
                 <div className="flex flex-col gap-1.5">
-                  {PROVIDERS.map((provider) => (
-                    <button
-                      key={provider.id}
-                      type="button"
-                      onClick={() => updateEngine({ provider: provider.id })}
-                      className={cn(
-                        "flex items-center justify-between rounded-xl border px-3 py-2 text-left transition",
-                        settings.engine.provider === provider.id
-                          ? "border-emerald-300/30 bg-emerald-400/[.07]"
-                          : "border-white/[.06] bg-white/[.02] hover:border-white/12"
-                      )}
-                    >
-                      <span>
-                        <span className={cn("block text-[11.5px] font-medium", settings.engine.provider === provider.id ? "text-emerald-100" : "text-slate-300")}>
-                          {provider.label}
+                  {PROVIDERS.map((provider) => {
+                    const active = settings.engine.provider === provider.id;
+                    return (
+                      <button
+                        key={provider.id}
+                        type="button"
+                        onClick={() => {
+                          updateEngine({ provider: provider.id, model: defaultModel(provider.id) });
+                          setCustomModel(false);
+                        }}
+                        className={cn(
+                          "flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left transition",
+                          active
+                            ? "border-emerald-300/30 bg-emerald-400/[.07]"
+                            : "border-white/[.06] bg-white/[.02] hover:border-white/12"
+                        )}
+                      >
+                        <span className="min-w-0">
+                          <span
+                            className={cn(
+                              "block text-[11.5px] font-medium",
+                              active ? "text-emerald-100" : "text-slate-300"
+                            )}
+                          >
+                            {provider.label}
+                          </span>
+                          <span className="block truncate text-[9.5px] text-slate-600">{provider.hint}</span>
                         </span>
-                        <span className="block text-[9.5px] text-slate-600">{provider.hint}</span>
-                      </span>
-                      {settings.engine.provider === provider.id && <Check size={12} className="text-emerald-300" />}
-                    </button>
-                  ))}
+                        {active && <Check size={12} className="shrink-0 text-emerald-300" />}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
               {settings.engine.provider !== "local" && (
                 <>
-                  <label className="block">
-                    <span className="label">Model</span>
-                    <input
-                      value={settings.engine.model}
-                      onChange={(event) => updateEngine({ model: event.target.value })}
-                      placeholder="gpt-4o-mini"
-                      className="field font-mono text-[11.5px]"
-                    />
-                  </label>
+                  {spec.models.length > 0 && (
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <span className="label mb-0">Model</span>
+                        <button
+                          type="button"
+                          onClick={() => setCustomModel((value) => !value)}
+                          className="text-[9.5px] font-medium text-slate-500 underline-offset-2 hover:text-slate-300 hover:underline"
+                        >
+                          {customModel ? "choose from list" : "enter id manually"}
+                        </button>
+                      </div>
+                      {customModel || !modelIsListed ? (
+                        <input
+                          value={settings.engine.model}
+                          onChange={(event) => updateEngine({ model: event.target.value })}
+                          placeholder={spec.models[0]?.id}
+                          className="field mt-1.5 font-mono text-[11.5px]"
+                        />
+                      ) : (
+                        <select
+                          value={settings.engine.model}
+                          onChange={(event) => updateEngine({ model: event.target.value })}
+                          className="field mt-1.5 appearance-none text-[11.5px]"
+                        >
+                          {spec.models.map((model) => (
+                            <option key={model.id} value={model.id}>
+                              {model.label} — {model.id}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                      <p className="mt-1 text-[9.5px] leading-relaxed text-slate-600">
+                        {spec.models.find((model) => model.id === settings.engine.model)?.note ??
+                          "Endpoint id must be one your key can access."}
+                      </p>
+                    </div>
+                  )}
+
                   {settings.engine.provider === "custom" && (
                     <label className="block">
                       <span className="label">Base URL</span>
@@ -353,15 +453,17 @@ export function SettingsScreen() {
                       />
                     </label>
                   )}
+
                   <label className="block">
                     <span className="label">API key</span>
                     <div className="relative">
                       <input
                         type={showKey ? "text" : "password"}
                         value={settings.engine.apiKey}
-                        onChange={(event) => updateEngine({ apiKey: event.target.value })}
-                        placeholder="sk-…"
+                        onChange={(event) => updateEngine({ apiKey: event.target.value.trim() })}
+                        placeholder={spec.keyPrefix ? `${spec.keyPrefix}…` : "your API key"}
                         autoComplete="off"
+                        spellCheck={false}
                         className="field pr-10 font-mono text-[11.5px]"
                       />
                       <button
@@ -374,10 +476,20 @@ export function SettingsScreen() {
                       </button>
                     </div>
                     <p className="mt-1.5 text-[9.5px] leading-relaxed text-slate-600">
-                      Stored only in this browser. Requests are proxied by the app server so provider keys
-                      never appear in client network calls to third parties.
+                      Kept in this browser only and sent through the app&apos;s own server proxy.{" "}
+                      {spec.keyUrl && (
+                        <a
+                          href={spec.keyUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="accent-text underline underline-offset-2"
+                        >
+                          Get a key →
+                        </a>
+                      )}
                     </p>
                   </label>
+
                   <button
                     type="button"
                     onClick={testConnection}
@@ -393,6 +505,18 @@ export function SettingsScreen() {
                           ? "Retry connection test"
                           : "Test connection"}
                   </button>
+                  {testMessage && (
+                    <p
+                      className={cn(
+                        "rounded-lg border px-2.5 py-2 text-[10px] leading-relaxed",
+                        testStatus === "ok"
+                          ? "border-emerald-400/25 bg-emerald-400/[.07] text-emerald-200"
+                          : "border-rose-400/25 bg-rose-400/[.07] text-rose-200"
+                      )}
+                    >
+                      {testMessage}
+                    </p>
+                  )}
                 </>
               )}
 
@@ -403,8 +527,8 @@ export function SettingsScreen() {
                 <p className="mt-1.5 text-[10px] leading-relaxed text-slate-600">
                   Deploying Axiom? Set <span className="font-mono text-slate-400">AI_PROVIDER</span>,{" "}
                   <span className="font-mono text-slate-400">AI_API_KEY</span> and{" "}
-                  <span className="font-mono text-slate-400">AI_MODEL</span> environment variables and every student
-                  gets the LLM without needing a key.
+                  <span className="font-mono text-slate-400">AI_MODEL</span> environment variables and every
+                  student gets the model without needing their own key.
                 </p>
               </div>
             </div>
@@ -427,7 +551,11 @@ export function SettingsScreen() {
                 onClick={() => {
                   setSettings(DEFAULT_SETTINGS);
                   saveSettings(DEFAULT_SETTINGS);
-                  applySettings({ accent: DEFAULT_SETTINGS.accent, reduceMotion: false });
+                  applySettings({
+                    accent: DEFAULT_SETTINGS.accent,
+                    reduceMotion: false,
+                    theme: DEFAULT_SETTINGS.theme,
+                  });
                   toast("Preferences reset to defaults.", "info");
                 }}
                 className="btn-ghost w-full justify-start"

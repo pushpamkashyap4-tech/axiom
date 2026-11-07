@@ -12,6 +12,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { cn, prettifyNumber } from "@/lib/utils";
+import { plotPalette, useColorMode } from "@/lib/use-theme";
 import type { PlotMarker, PlotParam, PlotSeries } from "@/lib/types";
 
 type View = { x0: number; x1: number; y0: number; y1: number };
@@ -121,6 +122,8 @@ export function GraphCanvas({
   const pinchStartRef = useRef<{ dist: number; view: View; cx: number; cy: number } | null>(null);
   const animRef = useRef<number | null>(null);
   const seriesSignature = useMemo(() => JSON.stringify(series.map((s) => [s.expression, s.yExpression, s.mode])), [series]);
+  const colorMode = useColorMode();
+  const palette = useMemo(() => plotPalette(colorMode), [colorMode]);
 
   useEffect(() => {
     setParamValues(Object.fromEntries((params ?? []).map((param) => [param.key, param.value])));
@@ -160,6 +163,30 @@ export function GraphCanvas({
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+
+  /** Even sweep of a parametric curve, in the same scope used for drawing. */
+  const paramPoints = useCallback(
+    (item: PlotSeries, count = 240) => {
+      if (item.mode !== "parametric") return [] as { x: number; y: number }[];
+      try {
+        const fx = compile(item.expression);
+        const fy = compile(item.yExpression ?? item.expression);
+        const [ta, tb] = item.tRange ?? [0, Math.PI * 2];
+        const points: { x: number; y: number }[] = [];
+        for (let i = 0; i <= count; i++) {
+          const tv = ta + ((tb - ta) * i) / count;
+          const scope = { pi: Math.PI, e: Math.E, tau: Math.PI * 2, t: tv, ...paramValues };
+          const x = Number(fx.evaluate(scope));
+          const y = Number(fy.evaluate(scope));
+          if (Number.isFinite(x) && Number.isFinite(y)) points.push({ x, y });
+        }
+        return points;
+      } catch {
+        return [];
+      }
+    },
+    [paramValues]
+  );
 
   const scopeBase = useMemo(
     () => ({ pi: Math.PI, e: Math.E, tau: Math.PI * 2, ...paramValues }),
@@ -274,11 +301,30 @@ export function GraphCanvas({
       y0: yRange?.[0] ?? -10,
       y1: yRange?.[1] ?? 10,
     };
+
+    // Parametric curves describe their own extent — fit the box around them.
+    const swept = series.flatMap((item) => paramPoints(item));
+    if (swept.length > 8) {
+      const xs = swept.map((point) => point.x);
+      const ys = swept.map((point) => point.y);
+      const padX = (Math.max(...xs) - Math.min(...xs)) * 0.1 || 1;
+      const padY = (Math.max(...ys) - Math.min(...ys)) * 0.1 || 1;
+      const fitted: View = {
+        x0: Math.min(...xs) - padX,
+        x1: Math.max(...xs) + padX,
+        y0: Math.min(...ys) - padY,
+        y1: Math.max(...ys) + padY,
+      };
+      setView(fitted);
+      onViewChange?.(fitted);
+      return;
+    }
+
     const resolved = yRange ? base : { ...base, ...autoY(base) };
     setView(resolved);
     onViewChange?.(resolved);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [xRange, yRange, autoY]);
+  }, [xRange, yRange, autoY, paramPoints]);
 
   const initialised = useRef(false);
   useEffect(() => {
@@ -331,7 +377,7 @@ export function GraphCanvas({
     const stepY = niceStep(ySpan, Math.max(46, Math.min(64, h / 5)), h / ySpan);
     ctx.lineWidth = 1;
 
-    ctx.strokeStyle = "rgba(255,255,255,0.045)";
+    ctx.strokeStyle = palette.grid;
     ctx.beginPath();
     for (let x = Math.ceil(x0 / stepX) * stepX; x <= x1; x += stepX) {
       const px = Math.round(sx(x)) + 0.5;
@@ -346,7 +392,7 @@ export function GraphCanvas({
     ctx.stroke();
 
     // Minor subdivisions
-    ctx.strokeStyle = "rgba(255,255,255,0.018)";
+    ctx.strokeStyle = palette.gridMinor;
     ctx.beginPath();
     for (let x = Math.ceil(x0 / (stepX / 5)) * (stepX / 5); x <= x1; x += stepX / 5) {
       const px = Math.round(sx(x)) + 0.5;
@@ -363,7 +409,7 @@ export function GraphCanvas({
     // Axes
     const axisY = sy(Math.min(Math.max(0, y0), y1));
     const axisX = sx(Math.min(Math.max(0, x0), x1));
-    ctx.strokeStyle = "rgba(148,180,210,0.34)";
+    ctx.strokeStyle = palette.axis;
     ctx.lineWidth = 1.2;
     ctx.beginPath();
     if (0 >= y0 && 0 <= y1) {
@@ -377,7 +423,7 @@ export function GraphCanvas({
     ctx.stroke();
 
     // Tick labels
-    ctx.fillStyle = "rgba(148,163,184,0.78)";
+    ctx.fillStyle = palette.tick;
     ctx.font = "10px 'Plus Jakarta Sans Variable', ui-sans-serif, system-ui";
     ctx.textBaseline = "middle";
     const labelY = 0 >= y0 && 0 <= y1 ? Math.min(h - 10, Math.max(12, axisY)) : h - 10;
@@ -424,7 +470,7 @@ export function GraphCanvas({
         const py = marker.y !== undefined ? sy(marker.y) : 14;
         const chipX = Math.min(w - textWidth - 12, Math.max(6, px + 5));
         const chipY = Math.max(4, Math.min(h - 20, py - 8));
-        ctx.fillStyle = "rgba(6,10,18,0.82)";
+        ctx.fillStyle = palette.chipBg;
         ctx.strokeStyle = `${color}55`;
         const chipW = textWidth + 10;
         const chipH = 15;
@@ -437,8 +483,62 @@ export function GraphCanvas({
       }
     }
 
-    // Curves
     const samples = sampleView(view, t, w);
+
+    // Shaded regions (area under a curve, or between two curves)
+    for (const group of samples) {
+      const spec = group.series.fill;
+      if (!spec || !group.segments.length) continue;
+      const tint = spec.color ?? group.color;
+      const baseline = spec.baseline ?? 0;
+      const otherEntry = spec.between
+        ? compiled.find((entry) => entry.item.expression === spec.between)
+        : null;
+
+      ctx.save();
+      ctx.globalAlpha = spec.opacity ?? 0.16;
+      ctx.fillStyle = tint;
+      for (const segment of group.segments) {
+        const lower: { x: number; y: number }[] = [];
+        const upper: { x: number; y: number }[] = [];
+        for (const point of segment) {
+          let top: number | null = point.y;
+          let bottom: number | null = baseline;
+          if (otherEntry?.fn) {
+            try {
+              const value = Number(otherEntry.fn.evaluate({ ...scopeBase, x: point.x, t }));
+              if (Number.isFinite(value)) {
+                top = Math.max(point.y, value);
+                bottom = Math.min(point.y, value);
+              } else {
+                top = null;
+              }
+            } catch {
+              top = null;
+            }
+          }
+          if (top === null || bottom === null) continue;
+          upper.push({ x: point.x, y: top });
+          lower.push({ x: point.x, y: bottom });
+        }
+        if (upper.length < 2) continue;
+        ctx.beginPath();
+        upper.forEach((point, index) => {
+          const px = sx(point.x);
+          const py = sy(point.y);
+          if (index === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        });
+        for (let index = lower.length - 1; index >= 0; index--) {
+          ctx.lineTo(sx(lower[index].x), sy(lower[index].y));
+        }
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // Curves
     for (const group of samples) {
       if (!group.segments.length) continue;
       ctx.save();
@@ -491,7 +591,7 @@ export function GraphCanvas({
       }
       ctx.restore();
     }
-  }, [size, view, sampleView, t, markers, compact, hover]);
+  }, [size, view, sampleView, t, markers, compact, hover, palette, compiled, scopeBase, playing]);
 
   useEffect(() => {
     if (!ready || size.w < 10) return;
@@ -709,14 +809,14 @@ export function GraphCanvas({
 
         {/* Axis labels */}
         {xLabel && (
-          <div className="pointer-events-none absolute bottom-2.5 left-1/2 z-10 max-w-[42%] -translate-x-1/2 truncate rounded bg-black/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500 backdrop-blur-sm">
+          <div className="plot-axis-label pointer-events-none absolute bottom-2.5 left-1/2 z-10 max-w-[42%] -translate-x-1/2 truncate rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] backdrop-blur-sm">
             {xLabel}
           </div>
         )}
         {yLabel && (
           <div
             className={cn(
-              "pointer-events-none absolute z-10 max-w-[46%] truncate rounded bg-black/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500 backdrop-blur-sm",
+              "plot-axis-label pointer-events-none absolute z-10 max-w-[46%] truncate rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] backdrop-blur-sm",
               xLabel ? "bottom-12 right-3" : "top-2.5 right-3"
             )}
           >

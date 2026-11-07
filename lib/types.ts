@@ -9,6 +9,13 @@ export type PlotSeries = {
   dashed?: boolean;
   width?: number;
   jumps?: boolean;
+  /** Shade the region under this curve (to `baseline`) or between it and `between`. */
+  fill?: {
+    baseline?: number;
+    between?: string;
+    opacity?: number;
+    color?: string;
+  };
 };
 
 export type PlotMarker = {
@@ -169,7 +176,7 @@ export type EngineContext = {
 };
 
 export type AIConfig = {
-  provider: "local" | "openai" | "openrouter" | "groq" | "custom";
+  provider: "local" | "openai" | "openrouter" | "groq" | "gemini" | "custom";
   apiKey: string;
   model: string;
   baseUrl?: string;

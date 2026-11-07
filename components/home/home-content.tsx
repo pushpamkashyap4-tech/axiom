@@ -158,8 +158,8 @@ const TOOLS = [
   },
   {
     href: "/tools/scientific",
-    title: "Scientific Plots",
-    description: "P–V diagrams, SHM, photoelectric, Raoult, Ellingham and more.",
+    title: "Graph Library",
+    description: "109 plots — conics, kinetics, blackbody, LCR resonance and more.",
     icon: FlaskConical,
     art: SineArt,
     tone: "from-emerald-400/18",
@@ -463,6 +463,7 @@ export function HomeContent() {
               >
                 <Link href={tool.href} className="tool-card noise group block h-full overflow-hidden p-4">
                   <div className={cn("pointer-events-none absolute inset-0 bg-gradient-to-br to-transparent opacity-70", tool.tone)} />
+
                   <div className="relative flex items-start justify-between">
                     <div className="flex items-center gap-2.5">
                       <span className={cn("flex h-9 w-9 items-center justify-center rounded-xl border border-white/[.08] bg-white/[.05] backdrop-blur", tool.accent)}>
@@ -478,7 +479,7 @@ export function HomeContent() {
                     </span>
                   </div>
                   <p className="relative mt-3 min-h-[32px] text-[11px] leading-relaxed text-slate-400">{tool.description}</p>
-                  <div className="relative mt-3 h-[64px] overflow-hidden rounded-xl border border-white/[.05] bg-black/25">
+                  <div className="tool-art relative mt-3 h-[64px] overflow-hidden rounded-xl border border-white/[.05]">
                     <div className="absolute inset-0 opacity-70 transition duration-500 group-hover:opacity-100 group-hover:scale-[1.04]">
                       <Art />
                     </div>

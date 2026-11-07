@@ -22,9 +22,18 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
+/**
+ * Applies the saved theme before first paint so switching between light and
+ * dark never flashes the wrong palette.
+ */
+const themeBootstrap = `(function(){try{var raw=localStorage.getItem("axiom.settings.v1");var s=raw?JSON.parse(raw):{};var mode=s.theme||"dark";var theme=mode==="system"?(window.matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"):mode;var el=document.documentElement;el.dataset.theme=theme;el.dataset.accent=s.accent||"cyan";el.dataset.reduceMotion=s.reduceMotion?"true":"false";el.style.colorScheme=theme;}catch(e){document.documentElement.dataset.theme="dark";}})();`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" data-accent="cyan" suppressHydrationWarning>
+    <html lang="en" data-accent="cyan" data-theme="dark" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
+      </head>
       <body className="font-sans">
         <ToastProvider>
           <AppShell>{children}</AppShell>

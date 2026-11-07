@@ -40,7 +40,7 @@ const NAV = [
     items: [
       { href: "/tools/grapher", label: "2D Grapher", icon: LineChart },
       { href: "/tools/3d", label: "3D Lab", icon: Boxes },
-      { href: "/tools/scientific", label: "Scientific Plots", icon: FlaskConical },
+      { href: "/tools/scientific", label: "Graph Library", icon: FlaskConical },
       { href: "/tools/diagrams", label: "Diagrams", icon: Workflow },
     ],
   },

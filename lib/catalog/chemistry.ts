@@ -1,0 +1,475 @@
+import { C, type SciPreset } from "./types";
+
+/**
+ * Chemistry catalogue — atomic structure, gaseous state, kinetics,
+ * thermodynamics, solutions, electrochemistry, surface chemistry,
+ * periodic trends and metallurgy.
+ */
+export const chemistryPlots: SciPreset[] = [
+  /* --------------------------- Atomic structure --------------------------- */
+  {
+    key: "c-radial-wave",
+    title: "Radial Wave Function ψ(r) for 1s, 2s, 3s",
+    subject: "Chemistry",
+    chapter: "Atomic Structure",
+    blurb: "Nodes are points where ψ passes through zero.",
+    xLabel: "Distance from nucleus r (a₀)",
+    yLabel: "ψ(r) (a.u.)",
+    xRange: [0, 20],
+    yRange: [-0.35, 1.05],
+    series: [
+      { expression: "exp(-x)", label: "1s  (no node)", color: C.cyan, domain: [0, 8] },
+      { expression: "0.35*(2 - x)*exp(-x/2)", label: "2s  (1 node at r = 2)", color: C.violet, domain: [0, 16] },
+      { expression: "0.06*(27 - 18*x + 2*x^2)*exp(-x/3)", label: "3s  (2 nodes)", color: C.emerald, domain: [0, 20] },
+    ],
+    markers: [
+      { x: 2, label: "2s node", color: C.violet },
+      { x: 1.9, label: "3s node 1", color: C.emerald },
+      { x: 7.1, label: "3s node 2", color: C.emerald },
+    ],
+    insight:
+      "ψ is not a probability and can be negative. Each radial node is a spherical shell where the wave function changes sign; an s-orbital with principal quantum number n has (n − 1) radial nodes.",
+    exam: "JEE Advanced",
+    keywords: ["radial wave function", "psi", "node", "1s 2s 3s"],
+  },
+  {
+    key: "c-radial-probability-density",
+    title: "Probability Density ψ²(r) vs r",
+    subject: "Chemistry",
+    chapter: "Atomic Structure",
+    blurb: "Squaring removes the sign, so nodes become zeros.",
+    xLabel: "Distance from nucleus r (a₀)",
+    yLabel: "ψ²(r) (a.u.)",
+    xRange: [0, 16],
+    yRange: [0, 1.05],
+    series: [
+      { expression: "exp(-2*x)", label: "1s", color: C.cyan, domain: [0, 8] },
+      { expression: "0.5*((2 - x)*exp(-x/2))^2", label: "2s", color: C.violet, domain: [0, 16] },
+      { expression: "0.1*(x*exp(-x/2))^2", label: "2p", color: C.amber, domain: [0, 14] },
+    ],
+    markers: [{ x: 2, label: "node in 2s", color: C.violet }],
+    insight:
+      "Probability density is always positive. For 1s it is maximum at the nucleus, which is why an electron in 1s has the highest chance of being found there.",
+    exam: "JEE Main",
+    keywords: ["probability density", "psi squared", "electron density"],
+  },
+  {
+    key: "c-radial-distribution",
+    title: "Radial Distribution 4πr²ψ² vs r",
+    subject: "Chemistry",
+    chapter: "Atomic Structure",
+    blurb: "The physically meaningful 'where is the electron' curve.",
+    xLabel: "Distance r (a₀)",
+    yLabel: "4πr²R²(r) (a.u.)",
+    xRange: [0, 24],
+    yRange: [0, 1.05],
+    series: [
+      { expression: "4*x^2*exp(-2*x)", label: "1s", color: C.cyan, domain: [0, 6] },
+      { expression: "0.25*x^2*(2 - x)^2*exp(-x)", label: "2s", color: C.violet, domain: [0, 16] },
+      { expression: "0.02*x^4*exp(-x)", label: "2p", color: C.amber, domain: [0, 14] },
+      { expression: "0.0016*x^2*(27 - 18*x + 2*x^2)^2*exp(-2*x/3)", label: "3s", color: C.emerald, domain: [0, 24] },
+    ],
+    markers: [
+      { x: 1, label: "1s peak", color: C.cyan },
+      { x: 4, label: "2p peak", color: C.amber },
+    ],
+    insight:
+      "Multiplying by 4πr² accounts for the increasing volume of shells. The 1s peak sits at r ≈ a₀ (the Bohr radius); 2p peaks further out than 2s, and 3s shows three humps for its three maxima.",
+    exam: "JEE Advanced",
+    keywords: ["radial probability", "4pir2", "radial distribution", "1s 2s 2p 3s"],
+  },
+  {
+    key: "c-radial-distribution-d",
+    title: "Radial Distribution for 2p, 3p and 3d",
+    subject: "Chemistry",
+    chapter: "Atomic Structure",
+    blurb: "How penetration changes with azimuthal quantum number.",
+    xLabel: "Distance r (a₀)",
+    yLabel: "4πr²R²(r) (a.u.)",
+    xRange: [0, 26],
+    yRange: [0, 1.05],
+    series: [
+      { expression: "0.02*x^4*exp(-x)", label: "2p", color: C.amber, domain: [0, 14] },
+      { expression: "0.0009*x^4*(6 - x)^2*exp(-2*x/3)", label: "3p", color: C.violet, domain: [0, 22] },
+      { expression: "0.00018*x^6*exp(-2*x/3)", label: "3d", color: C.emerald, domain: [0, 26] },
+    ],
+    markers: [
+      { x: 4, label: "2p", color: C.amber },
+      { x: 12, label: "3p", color: C.violet },
+      { x: 9, label: "3d", color: C.emerald },
+    ],
+    insight:
+      "3s is more penetrating than 3p, which is more penetrating than 3d — visible as the innermost hump moving outward. More penetration means the electron feels a larger effective nuclear charge and sits lower in energy.",
+    exam: "JEE Advanced",
+    keywords: ["penetration", "2p 3p 3d", "shielding", "radial nodes"],
+  },
+
+  /* ---------------------------- Gaseous state ----------------------------- */
+  {
+    key: "c-compressibility-z",
+    title: "Compressibility Factor Z vs Pressure",
+    subject: "Chemistry",
+    chapter: "States of Matter (Gaseous State)",
+    blurb: "Real gases dip below Z = 1, then rise above it.",
+    xLabel: "Pressure P (atm)",
+    yLabel: "Compressibility factor Z",
+    xRange: [0, 400],
+    yRange: [0.55, 2.1],
+    series: [
+      { expression: "1 - 0.00095*x + 2.6e-6*x^2", label: "N₂", color: C.cyan },
+      { expression: "1 - 0.0013*x + 4.2e-6*x^2", label: "CO₂ (strongest dip)", color: C.violet },
+      { expression: "1 + 0.00042*x + 1.1e-6*x^2", label: "H₂ (always above 1)", color: C.emerald },
+    ],
+    markers: [{ y: 1, label: "ideal gas Z = 1", color: C.amber }],
+    insight:
+      "Below Z = 1 the attractive forces dominate and the gas is more compressible than ideal; above Z = 1 repulsive (finite-size) effects dominate. Hydrogen and helium stay above 1 because their attraction is unusually weak.",
+    exam: "JEE Main",
+    keywords: ["compressibility factor", "z vs p", "real gas", "deviation ideal"],
+  },
+  {
+    key: "c-compressibility-temperature",
+    title: "Z vs P at Different Temperatures",
+    subject: "Chemistry",
+    chapter: "States of Matter (Gaseous State)",
+    blurb: "Boyle temperature is where Z is flat at low pressure.",
+    xLabel: "Pressure P (atm)",
+    yLabel: "Compressibility factor Z",
+    xRange: [0, 300],
+    yRange: [0.6, 1.8],
+    series: [
+      { expression: "1 - 0.0018*x + 3.4e-6*x^2", label: "T < T_B", color: C.sky },
+      { expression: "1 - 0.0006*x + 2.4e-6*x^2", label: "T ≈ T_B (flat start)", color: C.emerald },
+      { expression: "1 + 0.0006*x + 1.4e-6*x^2", label: "T > T_B", color: C.orange },
+    ],
+    markers: [{ y: 1, label: "ideal behaviour", color: C.amber }],
+    insight:
+      "At the Boyle temperature the initial slope is zero: the gas behaves ideally over a wide pressure range. Above it Z only rises; below it Z first falls.",
+    exam: "JEE Advanced",
+    keywords: ["boyle temperature", "z vs p temperature", "isotherm"],
+  },
+
+  /* ----------------------------- Chemical kinetics ------------------------ */
+  {
+    key: "c-zero-order",
+    title: "Zero-Order Reaction: Concentration vs Time",
+    subject: "Chemistry",
+    chapter: "Chemical Kinetics",
+    blurb: "[A] falls linearly; rate is independent of concentration.",
+    xLabel: "Time t (s)",
+    yLabel: "[A] (mol/L)",
+    xRange: [0, 10],
+    yRange: [0, 1.1],
+    series: [
+      { expression: "1 - 0.085*x", label: "[A] = [A]₀ − kt", color: C.cyan },
+      { expression: "0.085", label: "rate = k (constant)", color: C.amber, dashed: true },
+    ],
+    insight:
+      "A zero-order plot is a straight line with slope −k. Rate does not change as reactant is consumed — typical of surface-catalysed or photochemical reactions at saturation.",
+    exam: "JEE Main",
+    keywords: ["zero order", "concentration time", "rate constant"],
+  },
+  {
+    key: "c-first-order-rate",
+    title: "First-Order Reaction: Rate vs Concentration",
+    subject: "Chemistry",
+    chapter: "Chemical Kinetics",
+    blurb: "Rate is directly proportional to [A].",
+    xLabel: "Concentration [A] (mol/L)",
+    yLabel: "Rate (mol L⁻¹ s⁻¹)",
+    xRange: [0, 1.1],
+    yRange: [0, 0.11],
+    series: [
+      { expression: "0.09*x", label: "rate = k[A]", color: C.cyan },
+      { expression: "0.09", label: "zero order (for contrast)", color: C.slate, dashed: true },
+    ],
+    insight:
+      "For a first-order reaction the rate doubles when [A] doubles, so rate vs concentration is a straight line through the origin with slope k. Zero order would be a horizontal line.",
+    exam: "NEET",
+    keywords: ["first order", "rate vs concentration"],
+  },
+
+  /* --------------------- Thermodynamics and equilibrium ------------------- */
+  {
+    key: "c-gibbs-extent",
+    title: "Gibbs Energy vs Extent of Reaction",
+    subject: "Chemistry",
+    chapter: "Thermodynamics & Equilibrium",
+    blurb: "The minimum of G marks equilibrium.",
+    xLabel: "Extent of reaction ξ",
+    yLabel: "Gibbs energy G (kJ/mol)",
+    xRange: [0.02, 0.98],
+    yRange: [-7, 1.2],
+    series: [
+      {
+        expression: "10*(x*log(x) + (1-x)*log(1-x)) + 1.5*x",
+        label: "G(ξ) at fixed T, P",
+        color: C.emerald,
+      },
+    ],
+    markers: [{ x: 0.36, label: "equilibrium ξ_eq", color: C.amber }],
+    insight:
+      "A reaction proceeds spontaneously in the direction that lowers G. Equilibrium is the minimum of the curve — not completion — which is why every reaction stalls at a finite extent.",
+    exam: "JEE Advanced",
+    keywords: ["gibbs energy", "extent of reaction", "equilibrium"],
+  },
+  {
+    key: "c-clausius-clapeyron",
+    title: "Vapour Pressure vs Temperature",
+    subject: "Chemistry",
+    chapter: "Thermodynamics & Equilibrium",
+    blurb: "ln P is linear in 1/T; slope = −ΔH_vap/R.",
+    xLabel: "Temperature T (K)",
+    yLabel: "Vapour pressure (kPa)",
+    xRange: [270, 380],
+    yRange: [0, 110],
+    series: [
+      { expression: "exp(14.2 - 4200/x)", label: "liquid A (ΔH_vap = 35 kJ/mol)", color: C.cyan },
+      { expression: "exp(12.1 - 3600/x)", label: "liquid B (more volatile)", color: C.violet, dashed: true },
+    ],
+    markers: [{ y: 101.3, label: "1 atm (normal b.p.)", color: C.amber }],
+    insight:
+      "Vapour pressure rises exponentially with temperature. Where a curve crosses 1 atm is the normal boiling point — the more volatile liquid reaches it at a lower temperature.",
+    exam: "JEE Main",
+    keywords: ["vapour pressure", "clausius clapeyron", "boiling point", "enthalpy vaporisation"],
+  },
+
+  /* ------------------- Solutions and colligative properties --------------- */
+  {
+    key: "c-raoult-positive",
+    title: "Positive Deviation from Raoult's Law",
+    subject: "Chemistry",
+    chapter: "Solutions & Colligative Properties",
+    blurb: "Vapour pressure lies above the ideal straight line.",
+    xLabel: "Mole fraction of A, x_A",
+    yLabel: "Vapour pressure (mm Hg)",
+    xRange: [0, 1],
+    yRange: [0, 110],
+    series: [
+      { expression: "40 + 40*x", label: "ideal (Raoult)", color: C.slate, dashed: true },
+      { expression: "40 + 40*x + 26*x*(1-x)", label: "positive deviation", color: C.rose },
+    ],
+    insight:
+      "Positive deviation means A–B attractions are weaker than A–A and B–B, so molecules escape more easily. Such mixtures (ethanol + acetone) show a minimum-boiling azeotrope.",
+    exam: "JEE Advanced",
+    keywords: ["positive deviation", "raoult", "non ideal", "azeotrope"],
+  },
+  {
+    key: "c-raoult-negative",
+    title: "Negative Deviation from Raoult's Law",
+    subject: "Chemistry",
+    chapter: "Solutions & Colligative Properties",
+    blurb: "Vapour pressure lies below the ideal straight line.",
+    xLabel: "Mole fraction of A, x_A",
+    yLabel: "Vapour pressure (mm Hg)",
+    xRange: [0, 1],
+    yRange: [0, 110],
+    series: [
+      { expression: "40 + 40*x", label: "ideal (Raoult)", color: C.slate, dashed: true },
+      { expression: "40 + 40*x - 24*x*(1-x)", label: "negative deviation", color: C.emerald },
+    ],
+    insight:
+      "Strong A–B hydrogen bonding holds molecules in the liquid, lowering the vapour pressure below Raoult's line. Evidence: heat is released on mixing. Such mixtures (chloroform + acetone) form maximum-boiling azeotropes.",
+    exam: "JEE Advanced",
+    keywords: ["negative deviation", "raoult", "hydrogen bonding"],
+  },
+  {
+    key: "c-bp-elevation",
+    title: "Boiling Point Elevation",
+    subject: "Chemistry",
+    chapter: "Solutions & Colligative Properties",
+    blurb: "A non-volatile solute lowers vapour pressure and raises the boiling point.",
+    xLabel: "Temperature (°C)",
+    yLabel: "Vapour pressure (kPa)",
+    xRange: [70, 110],
+    yRange: [0, 115],
+    series: [
+      { expression: "exp(13.9 - 4200/(x+273))", label: "pure solvent", color: C.cyan },
+      { expression: "0.93*exp(13.9 - 4200/(x+273))", label: "solution (+solute)", color: C.violet },
+    ],
+    markers: [
+      { y: 101.3, label: "atmospheric pressure", color: C.amber },
+      { x: 100, label: "T_b solvent", color: C.cyan },
+      { x: 102.2, label: "T_b solution", color: C.violet },
+    ],
+    insight:
+      "Dissolving a non-volatile solute lowers the vapour pressure everywhere, so the curve must be heated further to reach 1 atm. That extra 0.52 K per mole of particles in water is ΔT_b = K_b·m.",
+    exam: "NEET",
+    keywords: ["boiling point elevation", "colligative", "kb", "vapour pressure lowering"],
+  },
+  {
+    key: "c-fp-depression",
+    title: "Freezing Point Depression",
+    subject: "Chemistry",
+    chapter: "Solutions & Colligative Properties",
+    blurb: "Solution meets the solid-solvent line at a lower temperature.",
+    xLabel: "Temperature (°C)",
+    yLabel: "Vapour pressure (kPa)",
+    xRange: [-8, 8],
+    yRange: [0, 1.1],
+    series: [
+      { expression: "0.61*exp(0.105*x)", label: "liquid solvent", color: C.cyan },
+      { expression: "0.61*exp(0.105*x) - 0.055", label: "solution", color: C.violet },
+      { expression: "0.61*exp(0.165*x)", label: "solid solvent", color: C.sky, dashed: true },
+    ],
+    markers: [{ x: 0, label: "f.p. solvent", color: C.cyan }, { x: -1.86, label: "ΔT_f", color: C.violet }],
+    insight:
+      "The solution's vapour-pressure curve meets the solid's curve at a lower temperature — that is the new freezing point. ΔT_f = K_f·m is behind salt on roads and antifreeze.",
+    exam: "NEET",
+    keywords: ["freezing point depression", "kf", "colligative", "antifreeze"],
+  },
+  {
+    key: "c-kohlrausch",
+    title: "Molar Conductivity vs √c",
+    subject: "Chemistry",
+    chapter: "Electrochemistry",
+    blurb: "Strong electrolytes are linear; weak ones curve steeply.",
+    xLabel: "√c (mol/L)^½",
+    yLabel: "Λm (S cm² mol⁻¹)",
+    xRange: [0, 0.35],
+    yRange: [0, 420],
+    series: [
+      { expression: "390 - 180*x", label: "KCl (strong)", color: C.cyan },
+      { expression: "410 - 480*x", label: "NaCl (strong, steeper)", color: C.emerald, domain: [0, 0.3] },
+      { expression: "40 + 330*exp(-9*x)", label: "CH₃COOH (weak)", color: C.violet },
+    ],
+    insight:
+      "Strong electrolytes follow Kohlrausch's law — a straight line whose intercept is Λ°m. Weak electrolytes rise sharply only on dilution, because ionisation increases; extrapolating them to zero is unreliable.",
+    exam: "JEE Advanced",
+    keywords: ["molar conductivity", "kohlrausch", "strong weak electrolyte", "lambda m"],
+  },
+
+  /* --------------------------- Surface chemistry -------------------------- */
+  {
+    key: "c-freundlich",
+    title: "Freundlich Adsorption Isotherm",
+    subject: "Chemistry",
+    chapter: "Surface Chemistry",
+    blurb: "log(x/m) vs log P is a straight line.",
+    xLabel: "log P",
+    yLabel: "log (x/m)",
+    xRange: [-0.8, 1.6],
+    yRange: [-1.4, 1.2],
+    series: [{ expression: "-0.9 + 0.72*x", label: "slope = 1/n ≈ 0.72", color: C.orange }],
+    insight:
+      "The empirical relation x/m = k·P^(1/n) becomes linear on a log–log plot, with slope 1/n. It fits only a limited pressure range and fails at high pressure, which is why Langmuir's model is preferred.",
+    exam: "JEE Main",
+    keywords: ["freundlich", "adsorption isotherm", "log log"],
+  },
+  {
+    key: "c-langmuir",
+    title: "Langmuir Adsorption Isotherm",
+    subject: "Chemistry",
+    chapter: "Surface Chemistry",
+    blurb: "Coverage saturates once the surface is full.",
+    xLabel: "Pressure P (a.u.)",
+    yLabel: "x/m (a.u.)",
+    xRange: [0, 10],
+    yRange: [0, 3.4],
+    series: [
+      { expression: "3.2*0.9*x/(1 + 0.9*x)", label: "monolayer coverage", color: C.emerald },
+      { expression: "3.2", label: "saturation", color: C.amber, dashed: true },
+    ],
+    insight:
+      "Adsorption rises linearly at low pressure and flattens once a monolayer forms. Langmuir's model assumes equivalent sites and no multilayer build-up.",
+    exam: "NEET",
+    keywords: ["langmuir", "monolayer", "adsorption"],
+  },
+
+  /* --------------------------- Periodic trends ---------------------------- */
+  {
+    key: "c-periodic-ie",
+    title: "Ionisation Enthalpy Across a Period",
+    subject: "Chemistry",
+    chapter: "Periodic Properties",
+    blurb: "General rise with sharp dips at p¹ and p⁴.",
+    xLabel: "Atomic number Z",
+    yLabel: "Ionisation enthalpy (kJ/mol)",
+    xRange: [2, 20],
+    yRange: [480, 1620],
+    series: [
+      {
+        expression:
+          "500 + 52*(x-3) - (x>=5)*190*(5<=x)*(x<=5) - (x>=8)*165*(8<=x)*(x<=8) - (x>=13)*150*(13<=x)*(x<=13) + (x>=15)*160*(15<=x)*(x<=15) + (x>=11)*360*(x>=11)",
+        label: "IE₁ trend",
+        color: C.cyan,
+        jumps: true,
+      },
+    ],
+    markers: [
+      { x: 4, label: "Be → B dip", color: C.rose },
+      { x: 7, label: "N → O dip", color: C.rose },
+      { x: 10, label: "Ne: maximum", color: C.emerald },
+    ],
+    insight:
+      "IE generally rises across a period, but falls from Be to B (2s² → 2p¹, easier to remove) and from N to O (extra electron pairing in an already half-filled p shell). Those two anomalies are exam favourites.",
+    exam: "JEE Main",
+    keywords: ["ionisation enthalpy", "periodic trend", "anomaly", "be to b"],
+  },
+  {
+    key: "c-periodic-radius",
+    title: "Atomic Radius: Period vs Group Trend",
+    subject: "Chemistry",
+    chapter: "Periodic Properties",
+    blurb: "Shrinks across a period, grows down a group.",
+    xLabel: "Atomic number Z",
+    yLabel: "Atomic radius (pm)",
+    xRange: [2, 20],
+    yRange: [30, 270],
+    series: [
+      { expression: "240 - 9.6*(x-2) + (x>=11)*95", label: "radius across period 2, 3", color: C.violet, jumps: true },
+    ],
+    markers: [{ x: 3, label: "Li", color: C.amber }, { x: 9, label: "F: smallest in period", color: C.emerald }],
+    insight:
+      "Across a period the rising nuclear charge pulls electrons in, so the radius shrinks. Down a group new shells are added, so the radius jumps up — the sawtooth above is exactly that behaviour.",
+    exam: "NEET",
+    keywords: ["atomic radius", "periodic trend", "across period", "down group"],
+  },
+  {
+    key: "c-periodic-ege",
+    title: "Electron Gain Enthalpy Across a Period",
+    subject: "Chemistry",
+    chapter: "Periodic Properties",
+    blurb: "Most negative at halogens; anomalies at Be and N.",
+    xLabel: "Atomic number Z",
+    yLabel: "ΔegH (kJ/mol)",
+    xRange: [2, 19],
+    yRange: [-400, 60],
+    series: [
+      {
+        expression:
+          "-10 - 32*(x-3) + (x>=4)*180*(4<=x)*(x<=4) + (x>=7)*190*(7<=x)*(x<=7) + (x>=12)*160*(12<=x)*(12<=x) + (x>=15)*180*(15<=x)*(x<=15) - (x>=17)*120*(x>=17)",
+        label: "electron gain enthalpy",
+        color: C.orange,
+        jumps: true,
+      },
+    ],
+    markers: [{ x: 17, label: "Cl: most negative", color: C.emerald }, { x: 7, label: "N: ~zero (half-filled)", color: C.rose }],
+    insight:
+      "Electron gain enthalpy becomes more negative across a period, peaking at the halogens. Noble gases and half-filled (N) or full (Be) subshells resist an extra electron, producing the plateaus and dips.",
+    exam: "JEE Main",
+    keywords: ["electron gain enthalpy", "electron affinity", "periodic"],
+  },
+
+  /* -------------------------------- Organic ------------------------------- */
+  {
+    key: "c-distillation",
+    title: "Fractional Distillation vs Simple Distillation",
+    subject: "Chemistry",
+    chapter: "Organic Chemistry: Separation Methods",
+    blurb: "Two-liquid boiling diagram with an azeotrope.",
+    xLabel: "Mole fraction of B in liquid, x_B",
+    yLabel: "Temperature (°C)",
+    xRange: [0, 1],
+    yRange: [55, 92],
+    series: [
+      { expression: "78 - 14*x + 9*x*(1-x)", label: "bubble point (liquid line)", color: C.cyan },
+      { expression: "78 - 6*x + 4*x*(1-x)", label: "dew point (vapour line)", color: C.violet },
+      { expression: "70 + 22*(x-0.4)^2", label: "minimum-boiling azeotrope", color: C.rose, dashed: true },
+    ],
+    markers: [{ x: 0.4, label: "azeotrope", color: C.amber }],
+    insight:
+      "Between the bubble and dew curves both phases coexist. A minimum-boiling azeotrope is a composition that boils unchanged, so it cannot be separated by distillation alone — the classic ethanol–water case.",
+    exam: "JEE Advanced",
+    keywords: ["distillation", "azeotrope", "boiling loop", "phase diagram"],
+  },
+];
