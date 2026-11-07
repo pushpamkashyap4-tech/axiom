@@ -1,0 +1,10 @@
+{
+  "name": "Axiom — Visual AI Study Companion",
+  "short_name": "Axiom",
+  "description": "Natural language to graphs, 3D models and diagrams for JEE, NEET and Boards.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#05070c",
+  "theme_color": "#05070c",
+  "icons": []
+}
