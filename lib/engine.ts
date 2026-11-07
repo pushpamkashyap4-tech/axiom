@@ -100,14 +100,24 @@ function looksLikeFunctionPrompt(prompt: string) {
   return false;
 }
 
+/** Split "sin(x) and cos(x)" / "x^2, 2x" into separate curves, keeping single expressions intact. */
+function splitExpressions(raw: string): string[] {
+  const parts = raw
+    .split(/\s*(?:;|&|\band\b|\bplus\b|\bvs\.?\b|\bversus\b|,)\s*/i)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  return parts.length > 0 ? parts : [raw];
+}
+
 function buildFunctionResponse(prompt: string): AIResponse | null {
   const raw = cleanExpression(prompt);
   if (!raw || raw.length > 90) return null;
-  if (!isPlottable(raw)) return null;
 
   // Parametric helper: "x = 3cos(t), y = 3sin(t)"
   const parametric = raw.match(/x\s*=\s*([^,]+),\s*y\s*=\s*(.+)/i);
   let series: PlotSeries[];
+  let label: string;
+
   if (parametric) {
     series = [
       {
@@ -118,25 +128,48 @@ function buildFunctionResponse(prompt: string): AIResponse | null {
         label: "parametric curve",
       },
     ];
+    label = raw;
   } else {
-    series = [{ expression: raw }];
+    // Support comparison prompts: "y = sin(x) and y = cos(x)"
+    const candidates = splitExpressions(raw)
+      .map((part) => cleanExpression(part))
+      .filter((part) => part && isPlottable(part))
+      .slice(0, 4);
+
+    if (candidates.length === 0) return null;
+    if (candidates.length === 1) {
+      series = [{ expression: candidates[0] }];
+      label = candidates[0];
+    } else {
+      series = candidates.map((expression) => ({ expression, label: `y = ${expression}` }));
+      label = candidates.join(" and ");
+    }
   }
 
-  const safeLabel = raw.replace(/\s+/g, "");
+  const safeLabel = label.replace(/\s+/g, "");
+  const heading = series.length > 1 ? "Plotted" : "Plotted: $y = " + prettyExpression(label) + "$";
+  const headingLine =
+    series.length > 1
+      ? `### Plotted: ${series.map((s) => `$y = ${prettyExpression(s.expression)}$`).join(", ")}`
+      : `### ${heading}`;
+
   return base(
-    `### Plotted: $y = ${prettyExpression(raw)}$
-Here is the live graph. Drag to pan, scroll or pinch to zoom, and hover to read the cursor coordinates.
+    `${headingLine}
+Here ${series.length > 1 ? "are the live curves" : "is the live graph"}. Drag to pan, scroll or pinch to zoom, and hover to read the cursor coordinates.
 
 **Try these moves**
 - Zoom into a region to inspect curvature, roots or asymptotes.
 - Hover along the curve — the read-out shows the exact (x, y) at your cursor.
 - Use the example chips in the Grapher to compare related functions.
 
-${expressionNotes(raw)}`,
+${expressionNotes(label)}`,
     [
-      graph(`y = ${raw}`, series, {
+      graph(series.length > 1 ? `Comparing ${series.length} functions` : `y = ${label}`, series, {
         xRange: [-10, 10],
-        caption: `Interactive plot of ${safeLabel}. Scroll to zoom, drag to pan.`,
+        caption:
+          series.length > 1
+            ? `Interactive plot of ${series.length} curves (${safeLabel}). Scroll to zoom, drag to pan.`
+            : `Interactive plot of ${safeLabel}. Scroll to zoom, drag to pan.`,
       }),
     ],
     ["Plot its derivative", "Compare with a related function", "Show the same function enlarged"]
